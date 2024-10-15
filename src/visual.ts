@@ -33,91 +33,120 @@ import IVisual = powerbi.extensibility.visual.IVisual;
 import DataView = powerbi.DataView;
 import IVisualHost = powerbi.extensibility.IVisualHost;
 import * as d3 from "d3";
+import { image } from "./unige_image";
+import { mars_image, calcPerc as mars_calc_perc } from "../assets/Mars_riempitivo";
+import { venus_image, calcPerc as venus_calc_perc } from "../assets/Venus_riempitivo";
+
 type Selection<T extends d3.BaseType> = d3.Selection<T, any, any, any>;
 
 export class Visual implements IVisual {
     private host: IVisualHost;
     private svg: Selection<SVGElement>;
-    private container: Selection<SVGElement>;
-    private circle: Selection<SVGElement>;
-    private textValue: Selection<SVGElement>;
-    private textLabel: Selection<SVGElement>;
-    private margin = { top: 10, right: 30, bottom: 30, left: 40 };
+    private margin = { top: 30, right: 100, bottom: 50, left: 30, xAxistop: 15 };
+    private options: VisualUpdateOptions;
+    private isGender_insidetext = false
+    private Mars: Selection<SVGElement>;
+    private Venus: Selection<SVGElement>;
 
     constructor(options: VisualConstructorOptions) {
         console.log("Visual build options", options)
+        console.log("Salvato", this.options)
         this.svg = d3.select(options.element)
             .append('svg')
-        this.container = this.svg.append("g")
-            .classed('container', true);
-        this.circle = this.container.append("circle")
-            .classed('circle', true);
-        this.textValue = this.container.append("text")
-            .classed("textValue", true);
-        this.textLabel = this.container.append("text")
-            .classed("textLabel", true);
-    }
 
-    public percentile = (arr, val) => d3.quantile(arr, val);
-
-    public old_percentile = (arr, val) =>
-        (100 *
-            arr.reduce(
-                (acc, v) => acc + (v < val ? 1 : 0) + (v === val ? 0.5 : 0),
-                0
-            )) /
-        arr.length;
-
-    public calculations(dataView: DataView) {
-        var result = ""
-        for (var area of dataView.matrix.rows.root.children) {
-            result += area.value + " : ";
-            result += "\nMin=" + parseFloat("" + this.percentile(Object.values(area.values).map(a => a.value), 0)).toFixed(2);
-            result += "\nperc5=" + parseFloat("" + this.percentile(Object.values(area.values).map(a => a.value), 0.05)).toFixed(2);
-            result += "\nQ1=" + parseFloat("" + this.percentile(Object.values(area.values).map(a => a.value), 0.25)).toFixed(2);
-            result += "\nMediana=" + parseFloat("" + this.percentile(Object.values(area.values).map(a => a.value), 0.50)).toFixed(2);
-            result += "\nQ3=" + parseFloat("" + this.percentile(Object.values(area.values).map(a => a.value), 0.75)).toFixed(2);
-            result += "\nPerc95=" + parseFloat("" + this.percentile(Object.values(area.values).map(a => a.value), 0.95)).toFixed(2);
-            result += "\nMax=" + parseFloat("" + this.percentile(Object.values(area.values).map(a => a.value), 1)).toFixed(2);
-        }
-        return result;
     }
 
     public update(options: VisualUpdateOptions) {
+        this.options = options
         console.log("Update options", options)
+        this.svg.selectAll("*").remove()
+        //debugger;
         let dataView: DataView = options.dataViews[0];
         console.log("Dataview", dataView)
-        debugger;
-        let width: number = options.viewport.width - this.margin.left - this.margin.right;
-        let height: number = options.viewport.height - this.margin.top - this.margin.bottom;
-        this.svg.attr("width", width);
-        this.svg.attr("height", height);
-        let radius: number = Math.min(width, height) / 2.2;
-        this.circle
-            .style("fill", "white")
-            .style("fill-opacity", 0.5)
-            .style("stroke", "black")
-            .style("stroke-width", 2)
-            .attr("r", radius)
-            .attr("cx", width / 2)
-            .attr("cy", height / 2);
-        let fontSizeValue: number = Math.min(width, height) / 5;
-        let result = this.calculations(dataView);
-        this.textValue
-            .text("Eccoci")
-            .attr("x", "50%")
-            .attr("y", "50%")
-            .attr("dy", "0.35em")
-            .attr("text-anchor", "middle")
-            .style("font-size", fontSizeValue + "px");
-        let fontSizeLabel: number = fontSizeValue / 4;
-        console.log("VALORI METADATA: ", dataView.metadata.columns[0].displayName);
-        this.textLabel
-            .text(result)
-            .attr("x", "50%")
-            .attr("y", height / 2)
-            .attr("dy", fontSizeValue / 5.2)
-            .attr("text-anchor", "middle")
-            .style("font-size", fontSizeLabel + "px");
+        //debugger;
+        const dim = Math.min(options.viewport.width, options.viewport.height)
+        if (this.isGender_insidetext) {
+            this.svg.attr("width", options.viewport.width).attr("height", options.viewport.height)
+            this.Mars = this.svg
+                .append("g")
+                .attr("transform", `translate(${(options.viewport.width - dim) / 3},${options.viewport.height / 4})`)
+                .html(mars_image);
+            this.Mars.select("svg").attr("width", dim / 2).attr("height", dim / 2)
+            this.Venus = this.svg
+                .append("g")
+                .attr("transform", `translate(${options.viewport.width - (options.viewport.width - dim) / 3 - dim / 2},${options.viewport.height / 4})`)
+                .html(venus_image)
+            this.Venus.select("svg").attr("width", dim / 2).attr("height", dim / 2)
+            var a1 = (Math.random() * 1000) % 100
+            var a2 = 100 - a1
+            this.Mars.select("#mars_perc").attr("width", mars_calc_perc(a1) + "px")
+            this.Mars
+                .append("text")
+                .text(a1.toFixed(2) + "%")
+                .attr("x", 17.39 * dim / 2 / 100)
+                .attr("y", 63.77 * dim / 2 / 100)
+                .style("font-size", (13.91 * dim / 2 / 100) + "px")
+                .style("font-weight", "bold")
+                .style("fill", "blue")
+                .style("stroke", "black")
+                .style("stroke-width", "2px");
+            this.Venus.select("#venus_perc").attr("width", venus_calc_perc(a2) + "px")
+            this.Venus
+                .append("text")
+                .text(a2.toFixed(2) + "%")
+                .attr("x", 31.88 * dim / 2 / 100)
+                .attr("y", 37.68 * dim / 2 / 100)
+                .style("font-size", (10.43 * dim / 2 / 100) + "px")
+                .style("font-weight", "bold")
+                .style("fill", "pink")
+                .style("stroke", "black")
+                .style("stroke-width", "2px");
+        } else {
+            this.svg.attr("width", options.viewport.width).attr("height", options.viewport.height)
+            this.Mars = this.svg
+                .append("g")
+                .attr("transform", `translate(${(options.viewport.width - dim) / 3},${options.viewport.height / 4})`)
+                .html(mars_image);
+            this.Mars.select("svg").attr("width", dim / 2).attr("height", dim / 2)
+            this.Venus = this.svg
+                .append("g")
+                .attr("transform", `translate(${options.viewport.width - (options.viewport.width - dim) / 3 - dim / 2},${options.viewport.height / 4})`)
+                .html(venus_image)
+            this.Venus.select("svg").attr("width", dim / 2).attr("height", dim / 2)
+            var a1 = (Math.random() * 1000) % 100
+            var a2 = 100 - a1
+            this.Mars.select("#mars_perc").attr("width", mars_calc_perc(a1) + "px")
+            this.Venus.select("#venus_perc").attr("width", venus_calc_perc(a2) + "px")
+            this.Mars
+                .append("text")
+                .text(a1.toFixed(2) + "%")
+                .attr("x", dim / 4)
+                .attr("y", dim / 2 + 60)
+                .style("text-anchor", "middle")
+                .style("font-size", (13.91 * dim / 2 / 100) + "px")
+                .style("font-weight", "bold")
+                .style("fill", "#199BFC")
+                .style("stroke", "black")
+                .style("stroke-width", "2px");
+            this.Venus
+                .append("text")
+                .text(a2.toFixed(2) + "%")
+                .attr("x", dim / 4)
+                .attr("y", dim / 2 + 60)
+                .style("text-anchor", "middle")
+                .style("font-size", (13.91 * dim / 2 / 100) + "px")
+                .style("font-weight", "bold")
+                .style("fill", "pink")
+                .style("stroke", "black")
+                .style("stroke-width", "2px");
+        }
+        this.svg
+            .append("image")
+            .attr("xlink:href", "data:image/png;base64," + image)
+            .attr("x", options.viewport.width - 300)  // Posizione X dell'immagine
+            .attr("y", 0)  // Posizione Y dell'immagine
+            .attr("width", 300)  // Larghezza dell'immagine
+            .attr("height", 300/1.66);  // Altezza dell'immagine
+        return;
     }
 }
